@@ -5,7 +5,7 @@ go_library(
     srcs = ["main.go"],
     importpath = "github.com/dennisfischer/tools/cmd",
     visibility = ["//visibility:private"],
-    deps = ["//proto"],
+    deps = ["//indexer"],
 )
 
 go_binary(

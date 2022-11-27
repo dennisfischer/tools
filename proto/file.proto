@@ -3,6 +3,8 @@ syntax = "proto3";
 option go_package = "github.com/dennisfischer/tools/proto";
 
 message File {
-    optional string path = 1;
-    optional string hash = 2;
+    optional string Name = 1;
+    optional string Path = 2;
+    optional string Hash = 3;
+    optional string Type = 4;
 }
