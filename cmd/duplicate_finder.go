@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/dennisfischer/tools/indexer"
 )
@@ -24,14 +22,10 @@ func main() {
 	idx := indexer.NewIndexer()
 	idx.Load(output)
 
-	filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			fmt.Println(err.Error())
+	log.Printf("Restored index with %d files.", len(idx.Index.FilesByPath))
+	for _, v := range idx.Index.FilesByHash {
+		if len(v) > 1 {
+			log.Println(v)
 		}
-		if info.IsDir() {
-			return nil
-		}
-		idx.AddFile(output, path)
-		return nil
-	})
+	}
 }

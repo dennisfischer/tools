@@ -16,17 +16,19 @@ import (
 )
 
 type Index struct {
-	Files map[string]fp.File
+	FilesByPath map[string]*fp.File
+	FilesByHash map[string][]*fp.File
 }
 
 type Indexer struct {
-	index Index
+	Index *Index
 }
 
 func NewIndexer() Indexer {
 	return Indexer{
-		index: Index{
-			Files: make(map[string]fp.File, 0),
+		Index: &Index{
+			FilesByPath: make(map[string]*fp.File, 0),
+			FilesByHash: make(map[string][]*fp.File, 0),
 		},
 	}
 }
@@ -46,7 +48,7 @@ func (i *Indexer) Load(r io.Reader) {
 			log.Fatalf("could not unmarshal protobuf: %v", err)
 		}
 
-		i.index.Files[*f.Path] = *f
+		i.Index.addFileToIndex(f)
 	}
 }
 
@@ -54,35 +56,48 @@ func (i *Indexer) WriteAll(w io.Writer) {
 }
 
 func (i *Indexer) AddFile(w io.Writer, path string) error {
-	if _, ok := i.index.Files[path]; ok {
-		log.Printf("Skipping file: %s\n", path)
+	if _, ok := i.Index.FilesByPath[path]; ok {
 		return nil
 	}
 
 	log.Printf("File Name: %s\n", path)
-	f, err := os.Open(path)
+	fh, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
+	defer fh.Close()
 
-	h := hashFile(f)
+	h := hashFile(fh)
 	n := filepath.Base(path)
 	t := filepath.Ext(n)
 
-	file := fp.File{
+	f := &fp.File{
 		Name: &n,
 		Path: &path,
 		Hash: &h,
 		Type: &t,
 	}
-	err = write(w, &file)
+	i.AddFileNoIndex(w, f)
+	return nil
+}
+
+func (i *Indexer) AddFileNoIndex(w io.Writer, f *fp.File) error {
+	err := write(w, f)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	i.index.Files[path] = file
+	i.Index.addFileToIndex(f)
 	return nil
+}
+
+func (i *Index) addFileToIndex(f *fp.File) {
+	i.FilesByPath[*f.Path] = f
+	if _, ok := i.FilesByHash[*f.Hash]; !ok {
+		i.FilesByHash[*f.Hash] = []*fp.File{f}
+	} else {
+		i.FilesByHash[*f.Hash] = append(i.FilesByHash[*f.Hash], f)
+	}
 }
 
 func hashFile(r io.Reader) string {
